@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LeadStatus {
+  NEW
+  AUDITED
+  CONTACTED
+  REPLIED
+  INTERESTED
+  ARCHIVED
+}
+
+enum LeadSource {
+  MANUAL
+  CSV
+  PROVIDER
+}
+
+enum AuditStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum EmailKind {
+  INITIAL
+  FOLLOWUP
+}
+
+enum EmailStatus {
+  DRAFT
+  SAVED
+  SENT_MANUALLY
+  SENT
+}
+
+enum FollowUpStatus {
+  PENDING
+  DONE
+  SKIPPED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  services      String?
+  portfolioUrl  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  leads          Lead[]
+  emails         Email[]
+  emailTemplates EmailTemplate[]
+  followUps      FollowUp[]
+  activities     Activity[]
+}
+
+model Lead {
+  id             String     @id @default(cuid())
+  userId         String
+  businessName   String
+  websiteUrl     String
+  industry       String?
+  location       String?
+  contactName    String?
+  contactEmail   String?
+  notes          String?
+  score          Int?
+  scoreBreakdown Json?
+  status         LeadStatus @default(NEW)
+  source         LeadSource @default(MANUAL)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audits     WebsiteAudit[]
+  emails     Email[]
+  followUps  FollowUp[]
+  activities Activity[]
+
+  @@unique([userId, websiteUrl])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model WebsiteAudit {
+  id                  String      @id @default(cuid())
+  leadId              String
+  status              AuditStatus @default(PENDING)
+  score               Int?
+  verifiedFindings    Json?
+  aiInferences        Json?
+  opportunities       Json?
+  recommendedServices Json?
+  aiSummary           String?
+  model               String?
+  createdAt           DateTime    @default(now())
+
+  lead   Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  emails Email[]
+
+  @@index([leadId, createdAt])
+}
+
+model Email {
+  id                String      @id @default(cuid())
+  userId            String
+  leadId            String
+  auditId           String?
+  kind              EmailKind   @default(INITIAL)
+  subject           String
+  body              String
+  status            EmailStatus @default(DRAFT)
+  sentAt            DateTime?
+  providerMessageId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead  Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  audit WebsiteAudit? @relation(fields: [auditId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([leadId])
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model FollowUp {
+  id        String         @id @default(cuid())
+  userId    String
+  leadId    String
+  dueAt     DateTime
+  note      String?
+  status    FollowUpStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, dueAt])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  userId    String
+  leadId    String?
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
