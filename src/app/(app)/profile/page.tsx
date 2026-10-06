@@ -9,7 +9,7 @@ export default async function ProfilePage() {
   if (!session) redirect("/login");
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
+  <main className="mx-auto max-w-2xl">
       <Card>
         <h1 className="text-2xl font-bold">Your profile</h1>
         <ProfileForm name={session.user.name} email={session.user.email} />
