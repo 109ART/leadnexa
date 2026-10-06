@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { auth } from "@/server/auth";
 import Card from "@/components/ui/Card";
@@ -13,7 +14,13 @@ export default async function DashboardPage() {
         <p className="mt-2 text-muted">
           Logged in as {session?.user.name} ({session?.user.email})
         </p>
-        <div className="mt-6">
+        <div className="mt-6 flex gap-3">
+          <Link
+            href="/profile"
+            className="rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium transition hover:bg-slate-50"
+          >
+            Profile
+          </Link>
           <LogoutButton />
         </div>
       </Card>

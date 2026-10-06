@@ -17,9 +17,16 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email") return;
+      let password: string | undefined;
 
-      const password = String(ctx.body?.password ?? "");
+      if (ctx.path === "/sign-up/email") {
+        password = String(ctx.body?.password ?? "");
+      } else if (ctx.path === "/reset-password") {
+        password = String(ctx.body?.newPassword ?? "");
+      }
+
+      if (password === undefined) return;
+
       const error = getPasswordError(password);
       if (error) {
         throw new APIError("BAD_REQUEST", { message: error });
