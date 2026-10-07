@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import type { LeadInput } from "./schema";
-import type { LeadStatusValue } from "@/lib/lead-status";
+import { LEAD_STATUS_LABELS, type LeadStatusValue } from "@/lib/lead-status";
 
 export const LEADS_PAGE_SIZE = 10;
 
@@ -81,4 +81,76 @@ export async function createLead(userId: string, input: LeadInput) {
   });
 
   return { duplicate: false as const, id: lead.id };
+}
+export async function getLead(userId: string, id: string) {
+  // Filtering by userId means you can never open someone else's lead
+  return db.lead.findFirst({ where: { id, userId } });
+}
+
+export async function listLeadActivities(userId: string, leadId: string) {
+  return db.activity.findMany({
+    where: { userId, leadId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+}
+
+export async function updateLead(userId: string, id: string, input: LeadInput) {
+  const lead = await db.lead.findFirst({
+    where: { id, userId },
+    select: { id: true },
+  });
+  if (!lead) return { outcome: "not_found" as const };
+
+  const duplicate = await db.lead.findFirst({
+    where: { userId, websiteUrl: input.websiteUrl, NOT: { id } },
+    select: { id: true },
+  });
+  if (duplicate) return { outcome: "duplicate" as const };
+
+  // Empty fields become null, so clearing a field in the form really clears it
+  await db.lead.updateMany({
+    where: { id, userId },
+    data: {
+      businessName: input.businessName,
+      websiteUrl: input.websiteUrl,
+      industry: input.industry ?? null,
+      location: input.location ?? null,
+      contactName: input.contactName ?? null,
+      contactEmail: input.contactEmail ?? null,
+      notes: input.notes ?? null,
+    },
+  });
+
+  await db.activity.create({
+    data: { userId, leadId: id, type: "Lead updated" },
+  });
+
+  return { outcome: "ok" as const };
+}
+
+export async function setLeadStatus(
+  userId: string,
+  id: string,
+  status: LeadStatusValue
+) {
+  const result = await db.lead.updateMany({
+    where: { id, userId },
+    data: { status },
+  });
+  if (result.count === 0) return { found: false as const };
+
+  await db.activity.create({
+    data: {
+      userId,
+      leadId: id,
+      type:
+        status === "ARCHIVED"
+          ? "Lead archived"
+          : `Status changed to ${LEAD_STATUS_LABELS[status]}`,
+      metadata: { status },
+    },
+  });
+
+  return { found: true as const };
 }
