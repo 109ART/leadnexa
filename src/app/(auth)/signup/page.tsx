@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { getPasswordError } from "@/lib/password";
 import Button from "@/components/ui/Button";
@@ -11,9 +10,9 @@ import Input from "@/components/ui/Input";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,6 +32,7 @@ export default function SignupPage() {
       name: String(data.get("name")),
       email: String(data.get("email")),
       password,
+      callbackURL: "/dashboard",
     });
 
     setLoading(false);
@@ -40,8 +40,25 @@ export default function SignupPage() {
       setError(error.message ?? "Something went wrong. Please try again.");
       return;
     }
-    router.push("/dashboard");
-    router.refresh();
+    setDone(true);
+  }
+
+  if (done) {
+    return (
+      <Card>
+        <h1 className="text-2xl font-bold">Check your email</h1>
+        <p className="mt-2 text-sm text-muted">
+          We sent a verification link to your email. Open it to activate your
+          account, then log in.
+        </p>
+        <Link
+          href="/login"
+          className="mt-6 block rounded-full bg-primary px-6 py-3 text-center font-medium text-white"
+        >
+          Go to login
+        </Link>
+      </Card>
+    );
   }
 
   return (

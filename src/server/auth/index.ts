@@ -4,15 +4,52 @@ import { nextCookies } from "better-auth/next-js";
 import { createAuthMiddleware, APIError } from "better-auth/api";
 import { db } from "@/server/db";
 import { getPasswordError } from "@/lib/password";
+import { emailProvider } from "@/server/services/email/provider";
+import {
+  verificationEmail,
+  resetPasswordEmail,
+  loginAlertEmail,
+} from "@/server/services/email/templates";
 
 export const auth = betterAuth({
   database: prismaAdapter(db, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      // Development only: print the link instead of sending an email.
-      console.log(`Password reset link for ${user.email}: ${url}`);
+      await emailProvider.send(resetPasswordEmail(user.email, url));
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await emailProvider.send(verificationEmail(user.email, url));
+    },
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        after: async (session) => {
+          try {
+            const user = await db.user.findUnique({
+              where: { id: session.userId },
+            });
+            if (!user) return;
+            await emailProvider.send(
+              loginAlertEmail(user.email, {
+                time: new Date(),
+                userAgent: session.userAgent,
+                ip: session.ipAddress,
+              })
+            );
+          } catch (error) {
+            // A failed alert email must never block the login itself
+            console.error("Login alert email failed:", error);
+          }
+        },
+      },
     },
   },
   hooks: {
