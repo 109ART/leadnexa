@@ -13,3 +13,8 @@ export function normalizeWebsiteUrl(input: string): string | null {
     return null;
   }
 }
+
+// Shows "example.com" instead of "https://example.com/"
+export function displayUrl(url: string): string {
+  return url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}

@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import type { HTMLAttributes } from "react";
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
-  tone?: "default" | "success" | "warning" | "error";
+  tone?: "default" | "success" | "warning" | "error" | "neutral";
 };
 
 const tones = {
@@ -10,6 +10,7 @@ const tones = {
   success: "bg-green-50 text-success",
   warning: "bg-amber-50 text-warning",
   error: "bg-red-50 text-error",
+  neutral: "bg-slate-100 text-muted",
 };
 
 export default function Badge({
